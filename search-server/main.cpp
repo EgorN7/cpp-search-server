@@ -117,11 +117,20 @@ private:
         set<string> minus_words;
     };
 
+    /// <summary>
+    /// структра, показывающая принадлежность слова к группам минус-слов и стоп-слов
+    /// </summary>
+    struct Fin_Word {
+        string word;
+        bool is_minus_word;
+        bool is_stop_word;
+    };
+
     //Приватные атрибуты
 
     map<string, map<int, double>> word_to_document_freq_; // набор инвентированых индексов документов в классе 
     set<string> stop_words_;                              // набор стоп-слов
-    double document_count_ = 0.0;                         // количество документов
+    int document_count_ = 0;                         // количество документов
 
     /// <summary>
     /// Проверка на стоп-слово
@@ -130,6 +139,28 @@ private:
     /// <returns> True если слово является стоп-словом </returns>
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
+    }
+    
+    /// <summary>
+    /// Метод обработки слова запроса для определение его принадлежности 
+    /// к группам минус-слов и стоп-слов
+    /// </summary>
+    /// <param name="word"> - слово из запроса</param>
+    /// <returns>Структура из слова и флагов его принадлежности </returns>
+    Fin_Word WorldHandler(const string& word) const {
+        
+        Fin_Word fin_word;
+        if (word[0] == '-') {
+            fin_word.is_minus_word = true;
+            fin_word.word = word.substr(1);            
+        }
+        else { 
+            fin_word.is_minus_word = false;
+            fin_word.word = word;
+        }
+        fin_word.is_stop_word = IsStopWord(fin_word.word);
+
+        return fin_word;
     }
 
 
@@ -181,14 +212,15 @@ private:
     /// <returns></returns>
     Query ParseQuery(const string& text) const {
         Query query;
-        for (const string& word : SplitIntoWordsNoStop(text)) {
-            if (word[0] == '-') {
-                query.minus_words.insert(word.substr(1));
-                continue;
-            }
-            if (!stop_words_.count(word))
-            {
-                query.plus_words.insert(word);
+        for (const string& word : SplitIntoWords(text)) {
+            Fin_Word fin_word = WorldHandler(word);
+            if (!fin_word.is_stop_word) {
+                if (fin_word.is_minus_word) {
+                    query.minus_words.insert(fin_word.word);
+                }
+                else {
+                    query.plus_words.insert(fin_word.word);
+                }
             }
         }
         return query;
@@ -205,7 +237,7 @@ private:
         for (const auto& word : query.plus_words)
         {
             if (word_to_document_freq_.count(word) != 0) {
-                double idf = log(document_count_ / word_to_document_freq_.at(word).size());
+                double idf = log(1.0 * document_count_ / word_to_document_freq_.at(word).size());
                 for (const auto& [id, TF] : word_to_document_freq_.at(word))
                 {
                     matched_documents[id] += idf * TF;
