@@ -53,7 +53,7 @@ string ReadLine() {
 /// </summary>
 /// <returns> Возращает переменную типа int с полученными данными</returns>
 int ReadLineWithNumber() {
-    int result;
+    int result = 0;
     cin >> result;
     ReadLine();
     return result;
