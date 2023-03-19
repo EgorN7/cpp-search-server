@@ -10,6 +10,50 @@
 
 using namespace std;
 
+template <typename Key, typename Value>
+ostream& operator<<(ostream& out, const pair<Key, Value>& container) {
+    out << container.first << ": " << container.second;
+    return out;
+}
+
+
+template <typename Container>
+void Print(ostream& out, const Container& container) {
+    bool first_elem = true;
+    for (const auto& element : container) {
+        if (!first_elem) {
+            out << ", "s;
+        }
+        first_elem = false;
+        out << element;
+    }
+}
+
+template <typename Key, typename Value>
+ostream& operator<<(ostream& out, const map<Key, Value>& container) {
+    out << '{';
+    Print(out, container);
+    out << '}';
+    return out;
+}
+
+
+template <typename Element>
+ostream& operator<<(ostream& out, const set<Element>& container) {
+    out << '{';
+    Print(out, container);
+    out << '}';
+    return out;
+}
+
+template <typename Element>
+ostream& operator<<(ostream& out, const vector<Element>& container) {
+    out << '[';
+    Print(out, container);
+    out << ']';
+    return out;
+}
+
 template <typename T, typename U>
 void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& u_str, const string& file,
     const string& func, unsigned line, const string& hint) {
@@ -138,15 +182,15 @@ public:
     /// Шаблонный метод нахождения нужного количества документов, соответствующих строке запроса
     /// с возможностью передачи критериев для поиска документов
     /// </summary>
-    /// <typeparam name="FuncPredict"> Шаблонный тип для критериев поиска</typeparam>
+    /// <typeparam name="Predicate"> Шаблонный тип для критериев поиска</typeparam>
     /// <param name="raw_query"> - строка запроса</param>
-    /// <param name="predict"> - критерии</param>
+    /// <param name="predicate"> - критерии</param>
     /// <returns>Нужное количество документов, соответствующих строке запроса</returns>
-    template<typename FuncPredict>
+    template<typename Predicate>
     vector<Document> FindTopDocuments(const string& raw_query,
-        FuncPredict predict) const {
+        Predicate predicate) const {
         const Query query = ParseQuery(raw_query);
-        auto matched_documents = FindAllDocuments(query, predict);
+        auto matched_documents = FindAllDocuments(query, predicate);
 
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
@@ -365,8 +409,8 @@ private:
     /// <param name="query"> - запрос</param>
     /// <param name="predict"> - функция проверяющая комунеты на необходимые критерии</param>
     /// <returns>Документы соответсвующие запросу</returns>
-    template<typename FuncPredict>
-    vector<Document> FindAllDocuments(const Query& query, FuncPredict predict) const {
+    template<typename Predicate>
+    vector<Document> FindAllDocuments(const Query& query, Predicate predicate) const {
         map<int, double> document_to_relevance;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
@@ -375,7 +419,7 @@ private:
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
             for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
                 DocumentData current_document = documents_.at(document_id);
-                if (predict(document_id, current_document.status, current_document.rating)) {
+                if (predicate(document_id, current_document.status, current_document.rating)) {
                     document_to_relevance[document_id] += term_freq * inverse_document_freq;
                 }
             }
@@ -461,6 +505,7 @@ void TestMatchDocument() {
 
     const int doc_id = 42;
     const string content = "cat in the city"s;
+    const vector <string> content_match_word = { "cat"s, "in"s, "the"s };
     const vector<int> ratings = { 1, 2, 3 };
 
     SearchServer server;
@@ -468,32 +513,30 @@ void TestMatchDocument() {
 
     // убедимся,что слова из поискового запроса вернулись
     {
-        const auto found_tup = server.MatchDocument("in the cat"s, doc_id);
-        const vector<string> words = get<0>(found_tup);
-        ASSERT_EQUAL(words.size(), 3);
+        const auto [matched_words, status] = server.MatchDocument("in the cat"s, doc_id);
+        ASSERT_EQUAL(matched_words, content_match_word);
     }
 
     // убедимся, что присутствие минус-слова возвращает пустой вектор
     {
-        const auto found_tup = server.MatchDocument("in -the cat"s, doc_id);
-        const vector<string> words = get<0>(found_tup);
-        ASSERT(words.empty());
+        const auto [matched_words, status] = server.MatchDocument("in -the cat"s, doc_id);
+        ASSERT(matched_words.empty());
     }
 
 }
 
+
 // Тест на сортировку по релевантности найденых документов, расчет релевантности и проверка вычесления рейтинга 
-void TestByRelevanceAndRating() {
-    const double epx = 1e-6; //+-0.000001
-    const int doc_id1 = 1;
-    const int doc_id2 = 2;
-    const int doc_id3 = 3;
+void TestSortingByRelevance() {
+    const int doc_id1 = 1; // relev = 0.650672
+    const int doc_id2 = 2; // relev = 0.067577
+    const int doc_id3 = 3; // relev = 0.135155
     const string content_1 = "cat in the city"s;
-    const vector<int> ratings_1 = { -1, 2, 2 }; // rating 1 relev = 0.650672
+    const vector<int> ratings_1 = { -1, 2, 2 };
     const string content_2 = "black dog was on 3rd avenue"s;
-    const vector<int> ratings_2 = {}; // rating 2 relev = 0.135155
+    const vector<int> ratings_2 = {};
     const string content_3 = "black cat was in a park"s;
-    const vector<int> ratings_3 = { 2, 3, 4 }; // rating 3 relev = 0.067577
+    const vector<int> ratings_3 = { 2, 3, 4 };
 
     SearchServer server;
     server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
@@ -509,15 +552,95 @@ void TestByRelevanceAndRating() {
     const Document& doc3 = found_docs[2];
 
     // проверим сортировку по релевантности и расчет релевантности
-    ASSERT(abs(doc1.relevance - 0.650672) < epx);
-    ASSERT(abs(doc2.relevance - 0.135155) < epx);
-    ASSERT(abs(doc3.relevance - 0.067577) < epx);
+    ASSERT_EQUAL(doc1.id, doc_id1);
+    ASSERT_EQUAL(doc2.id, doc_id3);
+    ASSERT_EQUAL(doc3.id, doc_id2);
+
+}
+// Тест на правильность вычесления релевантности
+void TestCalculatingRelevance() {
+    const double epx = 1e-6; //+-0.000001
+    const int doc_id1 = 1; // relev = 0.650672
+    const int doc_id2 = 2; // relev = 0.135155
+    const int doc_id3 = 3; // relev = 0.067577
+    const string content_1 = "cat in the city"s;
+    const vector<int> ratings_1 = { -1, 2, 2 };
+    const string content_2 = "black dog was on 3rd avenue"s;
+    const vector<int> ratings_2 = {};
+    const string content_3 = "black cat was in a park"s;
+    const vector<int> ratings_3 = { 2, 3, 4 };
+
+    SearchServer server;
+    server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
+    server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
+    server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
+
+    // убедимся,что документы найдены
+    const auto found_docs = server.FindTopDocuments("black cat the city"s);
+    ASSERT_EQUAL(found_docs.size(), 3);
+
+    const Document& doc1 = found_docs[0];
+    const Document& doc2 = found_docs[1];
+    const Document& doc3 = found_docs[2];
+
+
+
+    // проверим сортировку по релевантности и расчет релевантности
+    double relevance_doc1 = log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 4) +
+        log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 4) +
+        log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 4); // слова cat, the и city
+    ASSERT(abs(doc1.relevance - relevance_doc1) < epx);
+    double relevance_doc3 = log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6) +
+        log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6); // слова black и cat
+    ASSERT(abs(doc2.relevance - relevance_doc3) < epx);
+    double relevance_doc2 = log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6); // слово black
+    ASSERT(abs(doc3.relevance - relevance_doc2) < epx);
+}
+
+/// <summary>
+/// вычисление среднего ариметического оценок докумета
+/// </summary>
+/// <param name="rating"> вектор оценок</param>
+/// <returns>среднего ариметического оценок докумета</returns>
+int arithmetic_mean_of_the_rating(vector<int> rating) {
+    if (rating.size() == 0) {
+        return 0;
+    }
+    return std::accumulate(rating.begin(), rating.end(), 0) / static_cast<int>(rating.size());
+}
+
+// Тест на правильность вычесления рейтинга 
+void TestCalculatingRating() {
+    const int doc_id1 = 1;
+    const int doc_id2 = 2;
+    const int doc_id3 = 3;
+    const string content_1 = "cat in the city"s;
+    const vector<int> ratings_1 = { -1, 2, 2 }; // rating 1 relev = 0.650672
+    const string content_2 = "black dog was on 3rd avenue"s;
+    const vector<int> ratings_2 = {}; // rating 2 relev = 0.135155
+    const string content_3 = "black cat was in a park"s;
+    const vector<int> ratings_3 = { 2, 3, 4 }; // rating 3 relev = 0.067577
+
+    SearchServer server;
+    server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
+    server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
+    server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
 
     // проверим рейтинг
-    ASSERT_EQUAL(doc1.rating, 1);
-    ASSERT_EQUAL(doc2.rating, 3);
-    ASSERT_EQUAL(doc3.rating, 0);
+    const auto found_docs1 = server.FindTopDocuments("city"s);
+    ASSERT_EQUAL(found_docs1.size(), 1);
+    const Document& doc1 = found_docs1[0];
+    ASSERT_EQUAL(doc1.rating, arithmetic_mean_of_the_rating(ratings_1));
 
+    const auto found_docs2 = server.FindTopDocuments("dog"s);
+    ASSERT_EQUAL(found_docs2.size(), 1);
+    const Document& doc2 = found_docs2[0];
+    ASSERT_EQUAL(doc2.rating, arithmetic_mean_of_the_rating(ratings_2));
+
+    const auto found_docs3 = server.FindTopDocuments("park"s);
+    ASSERT_EQUAL(found_docs3.size(), 1);
+    const Document& doc3 = found_docs3[0];
+    ASSERT_EQUAL(doc3.rating, arithmetic_mean_of_the_rating(ratings_3));
 }
 
 // Тест на фильтрацию результата с использованием предиката и проверка на нахождение документов с разным статусом
@@ -589,7 +712,9 @@ void TestSearchServer() {
     TestExcludeStopWordsFromAddedDocumentContent();
     TestExcludeMinusWordsFromQuery();
     TestMatchDocument();
-    TestByRelevanceAndRating();
+    TestSortingByRelevance();
+    TestCalculatingRelevance();
+    TestCalculatingRating();
     TestFilterByPredicate();
 }
 
