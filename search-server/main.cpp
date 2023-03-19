@@ -526,7 +526,7 @@ void TestMatchDocument() {
 }
 
 
-// Тест на сортировку по релевантности найденых документов, расчет релевантности и проверка вычесления рейтинга 
+// Тест на сортировку по релевантности найденых документов
 void TestSortingByRelevance() {
     const int doc_id1 = 1; // relev = 0.650672
     const int doc_id2 = 2; // relev = 0.067577
@@ -643,7 +643,7 @@ void TestCalculatingRating() {
     ASSERT_EQUAL(doc3.rating, arithmetic_mean_of_the_rating(ratings_3));
 }
 
-// Тест на фильтрацию результата с использованием предиката и проверка на нахождение документов с разным статусом
+// Тест на фильтрацию результата с использованием предиката
 void TestFilterByPredicate() {
     const int doc_id1 = 1;
     const int doc_id2 = 2;
@@ -691,8 +691,54 @@ void TestFilterByPredicate() {
         ASSERT_EQUAL(doc1.id, doc_id1);
 
     }
+}
 
-    // вернем документы с определённым статусом без функции  предиката
+// Тест на фильтрацию результата с использованием статуса
+void TestFilterByStatus() {
+    const int doc_id1 = 1;
+    const int doc_id2 = 2;
+    const int doc_id3 = 3;
+    const int doc_id4 = 4;
+    const string content_1 = "cat in the city"s;
+    const vector<int> ratings_1 = { -1, 2, 2 }; // rating 1 relev = 0.650672
+    const string content_2 = "black dog was on 3rd avenue"s;
+    const vector<int> ratings_2 = {}; // rating 2 relev = 0.135155
+    const string content_3 = "black cat was in a park"s;
+    const vector<int> ratings_3 = { 2, 3, 4 }; // rating 3 relev = 0.067577
+    const string content_4 = "a white cat in a dark alley"s;
+    const vector<int> ratings_4 = { 1, 2, 3 }; // rating 3 relev = 0.067577
+
+    SearchServer server;
+    server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
+    server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
+    server.AddDocument(doc_id3, content_3, DocumentStatus::BANNED, ratings_3);
+    server.AddDocument(doc_id4, content_4, DocumentStatus::IRRELEVANT, ratings_4);
+
+    // вернем документы с статусом ACTUAL
+    {
+        const auto found_docs = server.FindTopDocuments("black cat the city"s,
+            DocumentStatus::ACTUAL);
+
+        ASSERT_EQUAL(found_docs.size(), 2);
+        const Document& doc1 = found_docs[0];
+        const Document& doc2 = found_docs[1];
+        ASSERT_EQUAL(doc1.id, doc_id1);
+        ASSERT_EQUAL(doc2.id, doc_id2);
+
+    }
+
+    // вернем документы с статусом BANNED
+    {
+        const auto found_docs = server.FindTopDocuments("black cat the city"s,
+            DocumentStatus::BANNED);
+
+        ASSERT_EQUAL(found_docs.size(), 1);
+        const Document& doc1 = found_docs[0];
+        ASSERT_EQUAL(doc1.id, doc_id3);
+
+    }
+
+    // вернем документы с статусом IRRELEVANT
     {
         const auto found_docs = server.FindTopDocuments("black cat the city"s,
             DocumentStatus::IRRELEVANT);
@@ -716,6 +762,7 @@ void TestSearchServer() {
     TestCalculatingRelevance();
     TestCalculatingRating();
     TestFilterByPredicate();
+    TestFilterByStatus();
 }
 
 int main() {
