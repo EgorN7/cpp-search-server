@@ -551,7 +551,7 @@ void TestSortingByRelevance() {
     const Document& doc2 = found_docs[1];
     const Document& doc3 = found_docs[2];
 
-    // проверим сортировку по релевантности и расчет релевантности
+    // проверим сортировку по релевантности
     ASSERT_EQUAL(doc1.id, doc_id1);
     ASSERT_EQUAL(doc2.id, doc_id3);
     ASSERT_EQUAL(doc3.id, doc_id2);
@@ -585,7 +585,7 @@ void TestCalculatingRelevance() {
 
 
 
-    // проверим сортировку по релевантности и расчет релевантности
+    // проверим расчет релевантности
     double relevance_doc1 = log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 4) +
         log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 4) +
         log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 4); // слова cat, the и city
