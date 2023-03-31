@@ -97,15 +97,22 @@ void AssertImpl(bool value, const string& expr_str, const string& file, const st
 /// Количество выводимых докуметов в результате поиска
 /// </summary>
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
-
 /// <summary>
 /// Структура соотвествия id документа, его реливантности 
 /// и рейтингу определённому запросу 
 /// </summary>
 struct Document {
-    int id;
-    double relevance;
-    int rating;
+    Document() = default;
+
+    Document(int id, double relevance, int rating)
+        : id(id)
+        , relevance(relevance)
+        , rating(rating) {
+    }
+
+    int id = 0;
+    double relevance = 0.0;
+    int rating = 0;
 };
 
 /// <summary>
@@ -142,12 +149,54 @@ int ReadLineWithNumber() {
 }
 
 /// <summary>
+/// Функция проверки на пустую строчку элемента в массиве
+/// </summary>
+/// <typeparam name="StringContainer"> - шаблон массива</typeparam>
+/// <param name="strings"> - массив строк</param>
+/// <returns>множество не пустых строк</returns>
+template <typename StringContainer>
+set<string> MakeUniqueNonEmptyStrings(const StringContainer& strings) {
+    set<string> non_empty_strings;
+    for (const string& str : strings) {
+        if (!str.empty()) {
+            non_empty_strings.insert(str);
+        }
+    }
+    return non_empty_strings;
+}
+
+/// <summary>
 /// Класс посиковового запроса
 /// </summary>
 class SearchServer {
 
     //публичные атрибуты, структуры и методы класса
 public:
+
+    /// <summary>
+    /// Конструктор класса, в качестве параметра подается массив стоп-слов
+    /// </summary>
+    /// <typeparam name="StringContainer"> - шаблон массива</typeparam>
+    /// <param name="stop_words"> массив стоп-слов</param>
+    template <typename StringContainer>
+    explicit SearchServer(const StringContainer& stop_words)
+        : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
+        for (const auto& word : MakeUniqueNonEmptyStrings(stop_words)) {
+            if (!IsValidWord(word)) {
+                throw invalid_argument("Valid Word");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Конструктор класса, в качестве параметра подается строка стоп-слов
+    /// </summary>
+    /// <param name="stop_words_text">- строка стоп-слов</param>
+    explicit SearchServer(const string& stop_words_text)
+        : SearchServer(
+            SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
+    {
+    }
 
     /// <summary>
     /// Метод заполнения множества стоп-слов класса
@@ -168,14 +217,20 @@ public:
     /// <param name="document"> - содержание документа</param>
     /// <param name="status"> - статус документа</param>
     /// <param name="ratings"> - рейтиги документа</param>
-    void AddDocument(int document_id, const string& document, DocumentStatus status,
-        const vector<int>& ratings) {
+    void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings) {
+        if (document_id < 0 || documents_.count(document_id)>0) {
+            throw invalid_argument("Valid id document");
+        }
+        if (!IsValidWord(document)) {
+            throw invalid_argument("Valid content document");
+        }
         const vector<string> words = SplitIntoWordsNoStop(document);
         const double inv_word_count = 1.0 / words.size();
         for (const string& word : words) {
             word_to_document_freqs_[word][document_id] += inv_word_count;
         }
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
+        count_documents_.push_back(document_id);
     }
 
     /// <summary>
@@ -189,6 +244,7 @@ public:
     template<typename Predicate>
     vector<Document> FindTopDocuments(const string& raw_query,
         Predicate predicate) const {
+        if (raw_query.empty()) throw invalid_argument("Empty query");
         const Query query = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query, predicate);
 
@@ -237,6 +293,7 @@ public:
     /// и статус документа</returns>
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query,
         int document_id) const {
+        if (raw_query.empty()) throw invalid_argument("Empty query");
         const Query query = ParseQuery(raw_query);
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
@@ -257,6 +314,18 @@ public:
             }
         }
         return { matched_words, documents_.at(document_id).status };
+    }
+
+    /// <summary>
+    /// Метод получения id документа номеру его порядка, в соотвествии с очередью внесения документов в базу данных
+    /// </summary>
+    /// <param name="index"> - номер документа по порядку</param>
+    /// <returns>Id документа, сооответствущий заданному номеру</returns>
+    int GetDocumentId(int index) const {
+        if (index < 0 || index >= static_cast<int>(count_documents_.size())) {
+            throw out_of_range("Index out_of_range");
+        }
+        return count_documents_.at(index);
     }
 
     //приватные атрибуты, структуры и методы класса
@@ -290,6 +359,7 @@ private:
     set<string> stop_words_; // набор стоп-слов
     map<string, map<int, double>> word_to_document_freqs_; // словарь инвентированых индексов документов в классе 
     map<int, DocumentData> documents_; //словарь добавленных документов, где ключ это id документа, а значение это содержимое документа
+    vector<int> count_documents_; //список id, в соотвествии с очередью внесения документов в базу данных
 
     /// <summary>
     /// Проверка на стоп-слово
@@ -298,6 +368,17 @@ private:
     /// <returns> True если слово является стоп-словом </returns>
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
+    }
+
+    /// <summary>
+    /// Проверка строки на наличие спецсимволов
+    /// </summary>
+    /// <param name="word">- строка для проверки</param>
+    /// <returns>Результат проверки в виде bool значения</returns>
+    static bool IsValidWord(const string& word) {
+        return none_of(word.begin(), word.end(), [](char c) {
+            return c >= '\0' && c < ' ';
+            });
     }
 
     /// <summary>
@@ -380,11 +461,15 @@ private:
         Query query;
         for (const string& word : SplitIntoWords(text)) {
             const QueryWord query_word = ParseQueryWord(word);
+            if (!IsValidWord(query_word.data)) { throw invalid_argument("Valid query"); }
+            if (query_word.data[0] == '-' || query_word.data.empty() 
+                || query_word.data[query_word.data.size() - 1] == '-') {
+                throw invalid_argument("Valid query"); 
+            }
             if (!query_word.is_stop) {
                 if (query_word.is_minus) {
                     query.minus_words.insert(query_word.data);
-                }
-                else {
+                } else {
                     query.plus_words.insert(query_word.data);
                 }
             }
@@ -602,7 +687,7 @@ void TestCalculatingRelevance() {
 /// </summary>
 /// <param name="rating"> вектор оценок</param>
 /// <returns>среднего ариметического оценок докумета</returns>
-int arithmetic_mean_of_the_rating(vector<int> rating) {
+int ArithmeticMeanOfTheRating(vector<int> rating) {
     if (rating.size() == 0) {
         return 0;
     }
