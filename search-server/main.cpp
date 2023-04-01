@@ -97,6 +97,7 @@ void AssertImpl(bool value, const string& expr_str, const string& file, const st
 /// Количество выводимых докуметов в результате поиска
 /// </summary>
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double EPSILON = 1e-6;
 /// <summary>
 /// Структура соотвествия id документа, его реливантности 
 /// и рейтингу определённому запросу 
@@ -181,9 +182,9 @@ public:
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
-        for (const auto& word : MakeUniqueNonEmptyStrings(stop_words)) {
+        for (const auto& word : stop_words_) {
             if (!IsValidWord(word)) {
-                throw invalid_argument("Valid Word");
+                throw invalid_argument("Valid Stop Word");
             }
         }
     }
@@ -244,13 +245,12 @@ public:
     template<typename Predicate>
     vector<Document> FindTopDocuments(const string& raw_query,
         Predicate predicate) const {
-        if (raw_query.empty()) throw invalid_argument("Empty query");
         const Query query = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query, predicate);
 
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
-                if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                if (abs(lhs.relevance - rhs.relevance) < EPSILON) {
                     return lhs.rating > rhs.rating;
                 }
                 return lhs.relevance > rhs.relevance;
@@ -293,7 +293,6 @@ public:
     /// и статус документа</returns>
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query,
         int document_id) const {
-        if (raw_query.empty()) throw invalid_argument("Empty query");
         const Query query = ParseQuery(raw_query);
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
@@ -322,9 +321,6 @@ public:
     /// <param name="index"> - номер документа по порядку</param>
     /// <returns>Id документа, сооответствущий заданному номеру</returns>
     int GetDocumentId(int index) const {
-        if (index < 0 || index >= static_cast<int>(count_documents_.size())) {
-            throw out_of_range("Index out_of_range");
-        }
         return count_documents_.at(index);
     }
 
@@ -459,12 +455,20 @@ private:
     /// <returns></returns>
     Query ParseQuery(const string& text) const {
         Query query;
+        if (text.empty()) { 
+            throw invalid_argument("Empty query"); }
         for (const string& word : SplitIntoWords(text)) {
             const QueryWord query_word = ParseQueryWord(word);
-            if (!IsValidWord(query_word.data)) { throw invalid_argument("Valid query"); }
-            if (query_word.data[0] == '-' || query_word.data.empty() 
-                || query_word.data[query_word.data.size() - 1] == '-') {
-                throw invalid_argument("Valid query"); 
+            if (!IsValidWord(query_word.data)) { 
+                throw invalid_argument("Valid content query"); }
+            if (query_word.data[0] == '-') {
+                throw invalid_argument("Double char '-' at the beginning of the word"); 
+            }
+            if (query_word.data[query_word.data.size() - 1] == '-') {
+                throw invalid_argument("Сhar '-' at the end of the word");
+            }
+            if (query_word.data.empty()) {
+                throw invalid_argument("Double space in query");
             }
             if (!query_word.is_stop) {
                 if (query_word.is_minus) {
