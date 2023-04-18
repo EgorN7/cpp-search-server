@@ -9,12 +9,7 @@
 #include "test_example_functions.h"
 
 
-std::ostream& operator << (std::ostream& ost, const Document& doc)
-{
-    return ost << std::string("{ document_id = ") << doc.id
-        << std::string(", relevance = ") << doc.relevance
-        << std::string(", rating = ") << doc.rating << std::string(" }");
-}
+
 
 template <typename T_iterator>
 std::ostream& operator << (std::ostream& ost, IteratorRange <T_iterator> it_range)
