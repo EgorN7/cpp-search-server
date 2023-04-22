@@ -5,9 +5,13 @@
 #include <string>
 #include <stdexcept>
 #include <algorithm>
+#include <iterator>
+
+
 
 #include "document.h"
 #include "string_processing.h"
+#include "log_duration.h"
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 const double EPSILON = 1e-6;
@@ -31,10 +35,13 @@ public:
 
     int GetDocumentCount()const;
 
-    int GetDocumentId(int index)const;
+    std::set<int>::iterator begin();
+    std::set<int>::iterator end();
 
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query,
         int document_id)const;
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
+    void RemoveDocument(int document_id);
 
 private:
     struct DocumentData {
@@ -54,7 +61,9 @@ private:
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
-    std::vector<int> document_ids_;
+    std::set<int> document_ids_;
+    std::map<int, std::map<std::string, double>> document_to_word_freqs_;
+    std::map<std::string, double> empty_map;
 
     bool IsStopWord(const std::string& word)const;
 
@@ -140,3 +149,6 @@ std::vector<Document> SearchServer::FindAllDocuments(const Query& query,
     }
     return matched_documents;
 }
+std::tuple<std::vector<std::string>, DocumentStatus> MatchDocuments(const SearchServer& search_server, const std::string& raw_query, int document_id);
+std::vector<Document> FindTopDocuments(const SearchServer& search_server, std::string raw_query);
+void AddDocument(SearchServer& search_server, int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings);

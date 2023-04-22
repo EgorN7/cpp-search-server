@@ -4,6 +4,7 @@
 #include <set>
 #include <string>
 #include <iostream>
+#include <cmath>
 #include "test_example_functions.h"
 #include "search_server.h"
 
@@ -145,7 +146,7 @@ void TestExcludeMinusWordsFromQuery() {
 
 // Тест на проверку сопоставления содержимого документа и поискового запроса
 
-void TestMatchDocument() {
+void TestMatchDocuments() {
 
     const int doc_id = 42;
     const std::string content = std::string("cat in the city");
@@ -401,7 +402,7 @@ void TestFilterByStatus() {
 void TestSearchServer() {
     TestExcludeStopWordsFromAddedDocumentContent();
     TestExcludeMinusWordsFromQuery();
-    TestMatchDocument();
+    TestMatchDocuments();
     TestSortingByRelevance();
     TestCalculatingRelevance();
     TestCalculatingRating();

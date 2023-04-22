@@ -10,7 +10,7 @@ void TestExcludeMinusWordsFromQuery();
 
 // Тест на проверку сопоставления содержимого документа и поискового запроса
 
-void TestMatchDocument();
+void TestMatchDocuments();
 
 
 // Тест на сортировку по релевантности найденых документов

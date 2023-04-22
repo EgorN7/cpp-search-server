@@ -1,5 +1,7 @@
 #pragma once
-#include<vector>
+#include <vector>
+#include <cmath>
+
 
 template <typename T_iterator>
 class IteratorRange
