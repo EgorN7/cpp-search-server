@@ -140,7 +140,7 @@ SearchServer::Query SearchServer::ParseQuery(const std::string& text)const {
 }
 
 const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
-    
+    static std::map<std::string, double> empty_map;
     if (document_ids_.find(document_id) == document_ids_.end()) {
         return empty_map;
     } else {
@@ -160,9 +160,6 @@ void SearchServer::RemoveDocument(int document_id) {
     document_ids_.erase(document_id);
     for (const auto& [word, _] : document_to_word_freqs_.at(document_id)) {
         word_to_document_freqs_.at(word).erase(document_id);
-        if (word_to_document_freqs_.at(word).empty()) {
-            word_to_document_freqs_.erase(word);
-        }
     }
     document_to_word_freqs_.erase(document_id);
 }
