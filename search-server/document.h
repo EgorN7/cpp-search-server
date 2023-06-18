@@ -17,4 +17,3 @@ struct Document {
 };
 
 std::ostream& operator << (std::ostream& ost, const Document& doc);
-

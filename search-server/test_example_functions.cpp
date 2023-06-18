@@ -3,6 +3,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <string_view>
 #include <iostream>
 #include <cmath>
 #include "test_example_functions.h"
@@ -90,20 +91,20 @@ void AssertImpl(bool value, const std::string& expr_str, const std::string& file
 
 #define ASSERT_HINT(expr, hint) AssertImpl((expr), #expr, __FILE__, __FUNCTION__, __LINE__, (hint))
 
-// Тест проверяет, что поисковая система исключает стоп-слова при добавлении документов
+// РўРµСЃС‚ РїСЂРѕРІРµСЂСЏРµС‚, С‡С‚Рѕ РїРѕРёСЃРєРѕРІР°СЏ СЃРёСЃС‚РµРјР° РёСЃРєР»СЋС‡Р°РµС‚ СЃС‚РѕРї-СЃР»РѕРІР° РїСЂРё РґРѕР±Р°РІР»РµРЅРёРё РґРѕРєСѓРјРµРЅС‚РѕРІ
 void TestExcludeStopWordsFromAddedDocumentContent() {
     const int doc_id = 42;
     const std::string content = std::string("cat in the city");
     const std::vector<int> ratings = { 1, 2, 3 };
 
-    // Сначала проверим, что поиск не существующего документа вернет пустоту 
+    // РЎРЅР°С‡Р°Р»Р° РїСЂРѕРІРµСЂРёРј, С‡С‚Рѕ РїРѕРёСЃРє РЅРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµРіРѕ РґРѕРєСѓРјРµРЅС‚Р° РІРµСЂРЅРµС‚ РїСѓСЃС‚РѕС‚Сѓ 
     {
         SearchServer server;
         ASSERT(server.FindTopDocuments(std::string("in")).empty());
     }
 
-    // Сначала убеждаемся, что поиск слова, не входящего в список стоп-слов,
-    // находит нужный документ
+    // РЎРЅР°С‡Р°Р»Р° СѓР±РµР¶РґР°РµРјСЃСЏ, С‡С‚Рѕ РїРѕРёСЃРє СЃР»РѕРІР°, РЅРµ РІС…РѕРґСЏС‰РµРіРѕ РІ СЃРїРёСЃРѕРє СЃС‚РѕРї-СЃР»РѕРІ,
+    // РЅР°С…РѕРґРёС‚ РЅСѓР¶РЅС‹Р№ РґРѕРєСѓРјРµРЅС‚
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
@@ -113,8 +114,8 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
         ASSERT_EQUAL(doc0.id, doc_id);
     }
 
-    // Затем убеждаемся, что поиск этого же слова, входящего в список стоп-слов,
-    // возвращает пустой результат
+    // Р—Р°С‚РµРј СѓР±РµР¶РґР°РµРјСЃСЏ, С‡С‚Рѕ РїРѕРёСЃРє СЌС‚РѕРіРѕ Р¶Рµ СЃР»РѕРІР°, РІС…РѕРґСЏС‰РµРіРѕ РІ СЃРїРёСЃРѕРє СЃС‚РѕРї-СЃР»РѕРІ,
+    // РІРѕР·РІСЂР°С‰Р°РµС‚ РїСѓСЃС‚РѕР№ СЂРµР·СѓР»СЊС‚Р°С‚
     {
         SearchServer server(std::string("in the"));
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
@@ -122,12 +123,12 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
     }
 }
 
-// Тест проверяет, что поисковая система исключает минус-слова из поискового запроса
+// РўРµСЃС‚ РїСЂРѕРІРµСЂСЏРµС‚, С‡С‚Рѕ РїРѕРёСЃРєРѕРІР°СЏ СЃРёСЃС‚РµРјР° РёСЃРєР»СЋС‡Р°РµС‚ РјРёРЅСѓСЃ-СЃР»РѕРІР° РёР· РїРѕРёСЃРєРѕРІРѕРіРѕ Р·Р°РїСЂРѕСЃР°
 void TestExcludeMinusWordsFromQuery() {
     const int doc_id = 42;
     const std::string content = std::string("cat in the city");
     const std::vector<int> ratings = { 1, 2, 3 };
-    // Сначала убедимся, что слова не являющиеся минус-словами, находят нужный документ
+    // РЎРЅР°С‡Р°Р»Р° СѓР±РµРґРёРјСЃСЏ, С‡С‚Рѕ СЃР»РѕРІР° РЅРµ СЏРІР»СЏСЋС‰РёРµСЃСЏ РјРёРЅСѓСЃ-СЃР»РѕРІР°РјРё, РЅР°С…РѕРґСЏС‚ РЅСѓР¶РЅС‹Р№ РґРѕРєСѓРјРµРЅС‚
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
@@ -136,7 +137,7 @@ void TestExcludeMinusWordsFromQuery() {
         const Document& doc0 = found_docs[0];
         ASSERT_EQUAL(doc0.id, doc_id);
     }
-    // Затем убедимся, что поиск по минус-слову возвращает пустоту 
+    // Р—Р°С‚РµРј СѓР±РµРґРёРјСЃСЏ, С‡С‚Рѕ РїРѕРёСЃРє РїРѕ РјРёРЅСѓСЃ-СЃР»РѕРІСѓ РІРѕР·РІСЂР°С‰Р°РµС‚ РїСѓСЃС‚РѕС‚Сѓ 
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
@@ -144,25 +145,25 @@ void TestExcludeMinusWordsFromQuery() {
     }
 }
 
-// Тест на проверку сопоставления содержимого документа и поискового запроса
+ //РўРµСЃС‚ РЅР° РїСЂРѕРІРµСЂРєСѓ СЃРѕРїРѕСЃС‚Р°РІР»РµРЅРёСЏ СЃРѕРґРµСЂР¶РёРјРѕРіРѕ РґРѕРєСѓРјРµРЅС‚Р° Рё РїРѕРёСЃРєРѕРІРѕРіРѕ Р·Р°РїСЂРѕСЃР°
 
 void TestMatchDocuments() {
 
     const int doc_id = 42;
     const std::string content = std::string("cat in the city");
-    const std::vector <std::string> content_match_word = { std::string("cat"), std::string("in"), std::string("the") };
+    const std::vector <std::string_view> content_match_word = { std::string_view("cat"), std::string_view("in"), std::string_view("the") };
     const std::vector<int> ratings = { 1, 2, 3 };
 
     SearchServer server;
     server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
 
-    // убедимся,что слова из поискового запроса вернулись
+    // СѓР±РµРґРёРјСЃСЏ,С‡С‚Рѕ СЃР»РѕРІР° РёР· РїРѕРёСЃРєРѕРІРѕРіРѕ Р·Р°РїСЂРѕСЃР° РІРµСЂРЅСѓР»РёСЃСЊ
     {
         const auto [matched_words, status] = server.MatchDocument(std::string("in the cat"), doc_id);
         ASSERT_EQUAL(matched_words, content_match_word);
     }
 
-    // убедимся, что присутствие минус-слова возвращает пустой вектор
+    // СѓР±РµРґРёРјСЃСЏ, С‡С‚Рѕ РїСЂРёСЃСѓС‚СЃС‚РІРёРµ РјРёРЅСѓСЃ-СЃР»РѕРІР° РІРѕР·РІСЂР°С‰Р°РµС‚ РїСѓСЃС‚РѕР№ РІРµРєС‚РѕСЂ
     {
         const auto [matched_words, status] = server.MatchDocument(std::string("in -the cat"), doc_id);
         ASSERT(matched_words.empty());
@@ -171,7 +172,7 @@ void TestMatchDocuments() {
 }
 
 
-// Тест на сортировку по релевантности найденых документов
+// РўРµСЃС‚ РЅР° СЃРѕСЂС‚РёСЂРѕРІРєСѓ РїРѕ СЂРµР»РµРІР°РЅС‚РЅРѕСЃС‚Рё РЅР°Р№РґРµРЅС‹С… РґРѕРєСѓРјРµРЅС‚РѕРІ
 void TestSortingByRelevance() {
     const int doc_id1 = 1; // relev = 0.650672
     const int doc_id2 = 2; // relev = 0.067577
@@ -188,7 +189,7 @@ void TestSortingByRelevance() {
     server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
     server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
 
-    // убедимся,что документы найдены
+    // СѓР±РµРґРёРјСЃСЏ,С‡С‚Рѕ РґРѕРєСѓРјРµРЅС‚С‹ РЅР°Р№РґРµРЅС‹
     const auto found_docs = server.FindTopDocuments(std::string("black cat the city"));
     ASSERT_EQUAL(found_docs.size(), 3);
 
@@ -196,13 +197,13 @@ void TestSortingByRelevance() {
     const Document& doc2 = found_docs[1];
     const Document& doc3 = found_docs[2];
 
-    // проверим сортировку по релевантности
+    // РїСЂРѕРІРµСЂРёРј СЃРѕСЂС‚РёСЂРѕРІРєСѓ РїРѕ СЂРµР»РµРІР°РЅС‚РЅРѕСЃС‚Рё
     ASSERT_EQUAL(doc1.id, doc_id1);
     ASSERT_EQUAL(doc2.id, doc_id3);
     ASSERT_EQUAL(doc3.id, doc_id2);
 
 }
-// Тест на правильность вычесления релевантности
+// РўРµСЃС‚ РЅР° РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РІС‹С‡РµСЃР»РµРЅРёСЏ СЂРµР»РµРІР°РЅС‚РЅРѕСЃС‚Рё
 void TestCalculatingRelevance() {
     const double epx = 1e-6; //+-0.000001
     const int doc_id1 = 1; // relev = 0.650672
@@ -220,7 +221,7 @@ void TestCalculatingRelevance() {
     server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
     server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
 
-    // убедимся,что документы найдены
+    // СѓР±РµРґРёРјСЃСЏ,С‡С‚Рѕ РґРѕРєСѓРјРµРЅС‚С‹ РЅР°Р№РґРµРЅС‹
     const auto found_docs = server.FindTopDocuments(std::string("black cat the city"));
     ASSERT_EQUAL(found_docs.size(), 3);
 
@@ -230,23 +231,23 @@ void TestCalculatingRelevance() {
 
 
 
-    // проверим расчет релевантности
+    // РїСЂРѕРІРµСЂРёРј СЂР°СЃС‡РµС‚ СЂРµР»РµРІР°РЅС‚РЅРѕСЃС‚Рё
     double relevance_doc1 = log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 4) +
         log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 4) +
-        log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 4); // слова cat, the и city
+        log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 4); // СЃР»РѕРІР° cat, the Рё city
     ASSERT(std::abs(doc1.relevance - relevance_doc1) < epx);
     double relevance_doc3 = log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6) +
-        log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6); // слова black и cat
+        log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6); // СЃР»РѕРІР° black Рё cat
     ASSERT(std::abs(doc2.relevance - relevance_doc3) < epx);
-    double relevance_doc2 = log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6); // слово black
+    double relevance_doc2 = log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6); // СЃР»РѕРІРѕ black
     ASSERT(std::abs(doc3.relevance - relevance_doc2) < epx);
 }
 
 /// <summary>
-/// вычисление среднего ариметического оценок докумета
+/// РІС‹С‡РёСЃР»РµРЅРёРµ СЃСЂРµРґРЅРµРіРѕ Р°СЂРёРјРµС‚РёС‡РµСЃРєРѕРіРѕ РѕС†РµРЅРѕРє РґРѕРєСѓРјРµС‚Р°
 /// </summary>
-/// <param name="rating"> вектор оценок</param>
-/// <returns>среднего ариметического оценок докумета</returns>
+/// <param name="rating"> РІРµРєС‚РѕСЂ РѕС†РµРЅРѕРє</param>
+/// <returns>СЃСЂРµРґРЅРµРіРѕ Р°СЂРёРјРµС‚РёС‡РµСЃРєРѕРіРѕ РѕС†РµРЅРѕРє РґРѕРєСѓРјРµС‚Р°</returns>
 int ArithmeticMeanOfTheRating(std::vector<int> rating) {
     if (rating.size() == 0) {
         return 0;
@@ -254,7 +255,7 @@ int ArithmeticMeanOfTheRating(std::vector<int> rating) {
     return std::accumulate(rating.begin(), rating.end(), 0) / static_cast<int>(rating.size());
 }
 
-// Тест на правильность вычесления рейтинга 
+// РўРµСЃС‚ РЅР° РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РІС‹С‡РµСЃР»РµРЅРёСЏ СЂРµР№С‚РёРЅРіР° 
 void TestCalculatingRating() {
     const int doc_id1 = 1;
     const int doc_id2 = 2;
@@ -271,7 +272,7 @@ void TestCalculatingRating() {
     server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
     server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
 
-    // проверим рейтинг
+    // РїСЂРѕРІРµСЂРёРј СЂРµР№С‚РёРЅРі
     const auto found_docs1 = server.FindTopDocuments(std::string("city"));
     ASSERT_EQUAL(found_docs1.size(), 1);
     const Document& doc1 = found_docs1[0];
@@ -288,7 +289,7 @@ void TestCalculatingRating() {
     ASSERT_EQUAL(doc3.rating, ArithmeticMeanOfTheRating(ratings_3));
 }
 
-// Тест на фильтрацию результата с использованием предиката
+// РўРµСЃС‚ РЅР° С„РёР»СЊС‚СЂР°С†РёСЋ СЂРµР·СѓР»СЊС‚Р°С‚Р° СЃ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµРј РїСЂРµРґРёРєР°С‚Р°
 void TestFilterByPredicate() {
     const int doc_id1 = 1;
     const int doc_id2 = 2;
@@ -309,7 +310,7 @@ void TestFilterByPredicate() {
     server.AddDocument(doc_id3, content_3, DocumentStatus::BANNED, ratings_3);
     server.AddDocument(doc_id4, content_4, DocumentStatus::IRRELEVANT, ratings_4);
 
-    // веренем документы с четным ИД
+    // РІРµСЂРµРЅРµРј РґРѕРєСѓРјРµРЅС‚С‹ СЃ С‡РµС‚РЅС‹Рј РР”
     {
         const auto found_docs = server.FindTopDocuments(std::string("black cat the city"),
             [](int document_id, DocumentStatus status, int rating)
@@ -323,7 +324,7 @@ void TestFilterByPredicate() {
 
     }
 
-    // вернем документы с рейтингом и определённым статусом
+    // РІРµСЂРЅРµРј РґРѕРєСѓРјРµРЅС‚С‹ СЃ СЂРµР№С‚РёРЅРіРѕРј Рё РѕРїСЂРµРґРµР»С‘РЅРЅС‹Рј СЃС‚Р°С‚СѓСЃРѕРј
     {
         const auto found_docs = server.FindTopDocuments(std::string("black cat the city"),
             [](int document_id, DocumentStatus status, int rating)
@@ -338,7 +339,7 @@ void TestFilterByPredicate() {
     }
 }
 
-// Тест на фильтрацию результата с использованием статуса
+// РўРµСЃС‚ РЅР° С„РёР»СЊС‚СЂР°С†РёСЋ СЂРµР·СѓР»СЊС‚Р°С‚Р° СЃ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµРј СЃС‚Р°С‚СѓСЃР°
 void TestFilterByStatus() {
     const int doc_id1 = 1;
     const int doc_id2 = 2;
@@ -359,7 +360,7 @@ void TestFilterByStatus() {
     server.AddDocument(doc_id3, content_3, DocumentStatus::BANNED, ratings_3);
     server.AddDocument(doc_id4, content_4, DocumentStatus::IRRELEVANT, ratings_4);
 
-    // вернем документы с статусом ACTUAL
+    // РІРµСЂРЅРµРј РґРѕРєСѓРјРµРЅС‚С‹ СЃ СЃС‚Р°С‚СѓСЃРѕРј ACTUAL
     {
         const auto found_docs = server.FindTopDocuments(std::string("black cat the city"),
             DocumentStatus::ACTUAL);
@@ -372,7 +373,7 @@ void TestFilterByStatus() {
 
     }
 
-    // вернем документы с статусом BANNED
+    // РІРµСЂРЅРµРј РґРѕРєСѓРјРµРЅС‚С‹ СЃ СЃС‚Р°С‚СѓСЃРѕРј BANNED
     {
         const auto found_docs = server.FindTopDocuments(std::string("black cat the city"),
             DocumentStatus::BANNED);
@@ -383,7 +384,7 @@ void TestFilterByStatus() {
 
     }
 
-    // вернем документы с статусом IRRELEVANT
+    // РІРµСЂРЅРµРј РґРѕРєСѓРјРµРЅС‚С‹ СЃ СЃС‚Р°С‚СѓСЃРѕРј IRRELEVANT
     {
         const auto found_docs = server.FindTopDocuments(std::string("black cat the city"),
             DocumentStatus::IRRELEVANT);
@@ -398,7 +399,7 @@ void TestFilterByStatus() {
 
 
 
-// Функция TestSearchServer является точкой входа для запуска тестов
+// Р¤СѓРЅРєС†РёСЏ TestSearchServer СЏРІР»СЏРµС‚СЃСЏ С‚РѕС‡РєРѕР№ РІС…РѕРґР° РґР»СЏ Р·Р°РїСѓСЃРєР° С‚РµСЃС‚РѕРІ
 void TestSearchServer() {
     TestExcludeStopWordsFromAddedDocumentContent();
     TestExcludeMinusWordsFromQuery();
